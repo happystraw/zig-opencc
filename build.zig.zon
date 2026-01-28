@@ -1,0 +1,20 @@
+.{
+    .name = .zig_opencc,
+    .version = "0.0.0",
+    .fingerprint = 0x2938cef94d9f091a,
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{
+        .opencc = .{
+            .url = "https://github.com/BYVoid/OpenCC/archive/refs/tags/ver.1.2.0.tar.gz",
+            .hash = "N-V-__8AAKB1ugDCgeAdsJsQ6smzBGKSb57c3MkRHqYXO6o3",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tools",
+        "LICENSE",
+        "README.md",
+    },
+}
