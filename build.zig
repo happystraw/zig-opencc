@@ -9,7 +9,7 @@
 //!                                  Options: Debug, ReleaseSafe, ReleaseFast, ReleaseSmall
 //!   -Dbuild-exe=<bool>             Build CLI executables (default: true)
 //!   -Dbuild-dict=<bool>            Generate dictionaries (default: true)
-//!   -Dopencc-pkg-data-dir=<path>   Data directory (default: {prefix}/share/opencc)
+//!   -Dpkg-data-dir=<path>          Data directory (default: {prefix}/share/opencc)
 //!
 //! Build Steps:
 //!   zig build                      Build everything (library + executables + dictionaries)

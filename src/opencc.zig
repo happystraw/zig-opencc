@@ -12,14 +12,14 @@ pub const OpenCC = opaque {
     /// Initialize a new OpenCC instance with the specified configuration.
     ///
     /// Parameters:
-    ///   - config: Optional path to a configuration file (e.g., "s2t.json", "s2twp.json").
+    ///   - config_path: Optional path to a configuration file (e.g., "s2t.json", "s2twp.json").
     ///             If null, uses the default configuration (s2t.json).
     ///
     /// Returns: Pointer to the initialized OpenCC instance.
     ///
     /// Errors: Returns InitFailed if the configuration file is not found or cannot be loaded.
-    pub fn init(config: ?[:0]const u8) Error!*OpenCC {
-        const opencc = c.opencc_open(if (config) |cfg| cfg.ptr else null);
+    pub fn init(config_path: ?[:0]const u8) Error!*OpenCC {
+        const opencc = c.opencc_open(if (config_path) |cfg| cfg.ptr else null);
         if (opencc == null or @intFromPtr(opencc) == std.math.maxInt(usize)) return Error.InitFailed;
         return @ptrCast(opencc);
     }
@@ -33,31 +33,31 @@ pub const OpenCC = opaque {
     /// Convert a UTF-8 string using the configured conversion rules.
     ///
     /// Parameters:
-    ///   - s: Input string to convert (must be valid UTF-8).
+    ///   - str: Input string to convert (must be valid UTF-8).
     ///
     /// Returns: The converted string. Must be freed with `free()` after use.
     ///
     /// Errors: Returns ConvertFailed if the input is not valid UTF-8.
-    pub fn convert(self: *OpenCC, s: []const u8) Error![]const u8 {
-        const str = c.opencc_convert_utf8(self.cval(), s.ptr, s.len);
-        return if (str == null) Error.ConvertFailed else str[0..std.mem.len(str)];
+    pub fn convert(self: *OpenCC, str: []const u8) Error![:0]const u8 {
+        const result = c.opencc_convert_utf8(self.cval(), str.ptr, str.len);
+        return if (result == null) Error.ConvertFailed else std.mem.span(result);
     }
 
     /// Free a string returned by `convert()`.
     ///
     /// Parameters:
-    ///   - s: The string to free (must be a string previously returned by `convert()`).
-    pub fn free(self: *OpenCC, s: []const u8) void {
+    ///   - str: The string to free (must be a string previously returned by `convert()`).
+    pub fn free(self: *OpenCC, str: [:0]const u8) void {
         _ = self;
-        c.opencc_convert_utf8_free(@ptrCast(@constCast(s.ptr)));
+        c.opencc_convert_utf8_free(@ptrCast(@constCast(str.ptr)));
     }
 
     /// Get the last error message from OpenCC.
     ///
     /// Returns: A string describing the last error that occurred.
-    pub fn err() []const u8 {
+    pub fn err() [:0]const u8 {
         const err_str = c.opencc_error();
-        return err_str[0..std.mem.len(err_str)];
+        return std.mem.span(err_str);
     }
 
     inline fn cval(self: *OpenCC) c.opencc_t {
@@ -88,6 +88,7 @@ test "opencc use dict" {
 }
 
 test "opencc init failed" {
+    try std.testing.expectEqualStrings("", OpenCC.err());
     try std.testing.expectError(OpenCC.Error.InitFailed, OpenCC.init("abc"));
     try std.testing.expectEqualStrings("abc not found or not accessible.", OpenCC.err());
 }
