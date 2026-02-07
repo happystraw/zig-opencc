@@ -406,7 +406,10 @@ fn executableToolReverseDict(b: *Build, opts: BuildOptions) *Build.Step.Compile 
     return b.addExecutable(.{
         .name = "reverse_dict",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tools/reverse_dict.zig"),
+            .root_source_file = if (builtin.zig_version.major == 0 and builtin.zig_version.minor < 16)
+                b.path("tools/reverse_dict.zig")
+            else
+                b.path("tools/reverse_dict_0.16.zig"),
             .target = opts.target,
         }),
     });
@@ -517,4 +520,5 @@ fn buildDictionariesStep(b: *Build, opts: BuildOptions) *Build.Step {
 }
 
 const std = @import("std");
+const builtin = @import("builtin");
 const Build = std.Build;

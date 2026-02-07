@@ -1,10 +1,7 @@
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+pub fn main(init: std.process.Init) !void {
+    const arena: std.mem.Allocator = init.arena.allocator();
+    const args = try init.minimal.args.toSlice(arena);
+    const io = init.io;
 
     if (args.len != 3) {
         std.debug.print("Usage: {s} [input] [output]\n", .{args[0]});
@@ -15,19 +12,20 @@ pub fn main() !void {
     const input_path = args[1];
     const output_path = args[2];
 
-    try reverseItems(allocator, input_path, output_path);
+    try reverseItems(arena, io, input_path, output_path);
 }
 
-fn reverseItems(allocator: std.mem.Allocator, input_path: []const u8, output_path: []const u8) !void {
+fn reverseItems(allocator: std.mem.Allocator, io: std.Io, input_path: []const u8, output_path: []const u8) !void {
     // Read input file (supports absolute and relative paths)
     const input_file = if (std.fs.path.isAbsolute(input_path))
-        try std.fs.openFileAbsolute(input_path, .{})
+        try std.Io.Dir.openFileAbsolute(io, input_path, .{})
     else
-        try std.fs.cwd().openFile(input_path, .{});
-    defer input_file.close();
+        try std.Io.Dir.cwd().openFile(io, input_path, .{});
+    defer input_file.close(io);
 
-    const input_content = try input_file.readToEndAlloc(allocator, 10 * 1024 * 1024); // max 10MB
-    defer allocator.free(input_content);
+    var reader_buffer: [1024]u8 = undefined;
+    var input_file_reader = input_file.reader(io, &reader_buffer);
+    const reader = &input_file_reader.interface;
 
     // Use HashMap to store reversed mapping: value -> []key
     var dict: std.StringHashMap(StringList) = .init(allocator);
@@ -42,9 +40,8 @@ fn reverseItems(allocator: std.mem.Allocator, input_path: []const u8, output_pat
     }
 
     // Parse input file
-    var lines = std.mem.splitScalar(u8, input_content, '\n');
-    while (lines.next()) |line| {
-        const line_stripped = std.mem.trim(u8, line, " \t\r\n");
+    while (try reader.takeDelimiter('\n')) |line| {
+        const line_stripped = std.mem.trim(u8, line, " \t\r");
 
         // Skip empty lines and comment lines
         if (line_stripped.len == 0 or line_stripped[0] == '#') {
@@ -61,7 +58,7 @@ fn reverseItems(allocator: std.mem.Allocator, input_path: []const u8, output_pat
         // value may be multiple space-separated values
         var values = std.mem.splitScalar(u8, value_part, ' ');
         while (values.next()) |value| {
-            const value_trimmed = std.mem.trim(u8, value, " \t\r\n");
+            const value_trimmed = std.mem.trim(u8, value, " \t\r");
             if (value_trimmed.len == 0) continue;
 
             // Create or update mapping for each value
@@ -91,30 +88,34 @@ fn reverseItems(allocator: std.mem.Allocator, input_path: []const u8, output_pat
     }.lessThan);
 
     // Write output file
-    var output_buffer: std.ArrayList(u8) = .empty;
-    defer output_buffer.deinit(allocator);
+    var output_data: std.ArrayList(u8) = .empty;
+    defer output_data.deinit(allocator);
 
     for (sorted_keys.items) |key| {
         const values_list = dict.get(key).?;
 
-        try output_buffer.appendSlice(allocator, key);
-        try output_buffer.append(allocator, '\t');
+        try output_data.appendSlice(allocator, key);
+        try output_data.append(allocator, '\t');
 
         for (values_list.items, 0..) |value, i| {
-            if (i > 0) try output_buffer.append(allocator, ' ');
-            try output_buffer.appendSlice(allocator, value);
+            if (i > 0) try output_data.append(allocator, ' ');
+            try output_data.appendSlice(allocator, value);
         }
 
-        try output_buffer.append(allocator, '\n');
+        try output_data.append(allocator, '\n');
     }
 
     const output_file = if (std.fs.path.isAbsolute(output_path))
-        try std.fs.createFileAbsolute(output_path, .{})
+        try std.Io.Dir.createFileAbsolute(io, output_path, .{})
     else
-        try std.fs.cwd().createFile(output_path, .{});
-    defer output_file.close();
+        try std.Io.Dir.cwd().createFile(io, output_path, .{});
+    defer output_file.close(io);
 
-    try output_file.writeAll(output_buffer.items);
+    var writer_buffer: [1024]u8 = undefined;
+    var output_file_writer = output_file.writer(io, &writer_buffer);
+    const writer = &output_file_writer.interface;
+    try writer.writeAll(output_data.items);
+    try writer.flush();
 }
 
 const std = @import("std");
