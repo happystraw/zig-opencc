@@ -68,6 +68,8 @@ pub fn build(b: *Build) void {
     });
     mod.linkLibrary(lib);
 
+    // ------ Tests ------
+
     const mod_tests = b.addTest(.{ .root_module = mod });
     const run_mod_tests = b.addRunArtifact(mod_tests);
 
@@ -517,4 +519,5 @@ fn buildDictionariesStep(b: *Build, opts: BuildOptions) *Build.Step {
 }
 
 const std = @import("std");
+const builtin = @import("builtin");
 const Build = std.Build;
