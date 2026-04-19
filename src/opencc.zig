@@ -102,5 +102,18 @@ test "opencc convert failed" {
     try std.testing.expectStringStartsWith(OpenCC.err(), "Invalid UTF8:");
 }
 
+test "opencc with plugin jieba" {
+    const test_options = @import("test_options");
+    if (!test_options.build_jieba) return error.SkipZigTest;
+    const opencc: *OpenCC = try .init("s2twp_jieba.json");
+    defer opencc.deinit();
+
+    const input = "我是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。";
+    const output = try opencc.convert(input);
+    defer opencc.free(output);
+
+    try std.testing.expectEqualStrings("我是拖拉機學院手扶拖拉機專業的。不用多久，我就會升職加薪，當上CEO，走上人生巔峰。", output);
+}
+
 const std = @import("std");
 const c = @import("c");
