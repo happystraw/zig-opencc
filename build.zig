@@ -131,7 +131,7 @@ fn buildOptions(b: *Build) BuildOptions {
         .disable_plugins = disable_plugins,
         .pkg_config_header = configHeader(b),
         .pkg_name = "\"opencc\"",
-        .pkg_version = "\"1.3.0\"",
+        .pkg_version = "\"1.3.1\"",
         .pkg_data_dir = b.fmt("\"{s}\"", .{pkg_data_dir}),
     };
 }
@@ -183,6 +183,7 @@ fn library(b: *Build, opts: BuildOptions) *std.Build.Step.Compile {
         "src/MarisaDict.cpp",
         "src/MaxMatchSegmentation.cpp",
         "src/PhraseExtract.cpp",
+        "src/PrefixMatch.cpp",
         "src/SerializedValues.cpp",
         "src/SimpleConverter.cpp",
         "src/Segmentation.cpp",
