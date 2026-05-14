@@ -292,6 +292,7 @@ fn libraryJieba(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile) 
         .files = &sources,
         .flags = &[_][]const u8{ "-std=c++17", "-fno-sanitize=all" },
     });
+    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
     mod.addIncludePath(dep.path("src"));
     mod.addIncludePath(dep.path("plugins/jieba/include"));
     mod.addIncludePath(dep.path("plugins/jieba/deps/cppjieba/include"));
