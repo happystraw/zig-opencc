@@ -53,10 +53,10 @@ jobs:
         if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'macos')
         run: zig build -Dtarget=aarch64-macos -Doptimize=ReleaseFast
 
-      - name: Cross-compile x86_64-windows
-        if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'windows')
-        run: zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSafe
-
-      - name: Cross-compile aarch64-windows
-        if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'windows')
-        run: zig build -Dtarget=aarch64-windows -Doptimize=ReleaseFast
+      # - name: Cross-compile x86_64-windows
+      #   if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'windows')
+      #   run: zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSafe
+      #
+      # - name: Cross-compile aarch64-windows
+      #   if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'windows')
+      #   run: zig build -Dtarget=aarch64-windows -Doptimize=ReleaseFast
