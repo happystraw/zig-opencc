@@ -88,6 +88,7 @@ pub fn build(b: *Build) void {
             },
         }),
     });
+    mod_tests.use_llvm = true;
     mod_tests.root_module.linkLibrary(lib);
 
     const run_mod_tests = b.addRunArtifact(mod_tests);
@@ -188,6 +189,7 @@ fn library(b: *Build, opts: BuildOptions) *std.Build.Step.Compile {
         "src/SimpleConverter.cpp",
         "src/Segmentation.cpp",
         "src/PluginSegmentation.cpp",
+        "src/SerializableDict.cpp",
         "src/TextDict.cpp",
         "src/UTF8StringSlice.cpp",
         "src/UTF8Util.cpp",
@@ -368,8 +370,9 @@ fn installHeaderFiles(
         "MarisaDict.hpp",
         "MaxMatchSegmentation.hpp",
         "Optional.hpp",
-        "PhraseExtract.hpp",
         "PluginSegmentation.hpp",
+        "PhraseExtract.hpp",
+        "PrefixMatch.hpp",
         "Segmentation.hpp",
         "Segments.hpp",
         "SerializableDict.hpp",
@@ -421,8 +424,13 @@ fn executable(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile) *B
         .link_libcpp = true,
     });
 
-    mod.addCSourceFile(.{
-        .file = dep.path("src/tools/CommandLine.cpp"),
+    mod.addCSourceFiles(.{
+        .root = dep.path(""),
+        .files = &[_][]const u8{
+            "src/tools/CommandLine.cpp",
+            "src/tools/CommandLineMain.cpp",
+            "src/tools/PlatformIO.cpp",
+        },
         .flags = &[_][]const u8{
             "-std=c++17",
             "-Wall",
