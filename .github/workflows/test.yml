@@ -31,32 +31,62 @@ jobs:
       - name: Setup Zig
         uses: mlugg/setup-zig@v2
 
-      - name: Unit tests
+      - name: Unit tests (static)
         run: zig build test -Doptimize=ReleaseSafe
 
-      - name: Unit tests (with jieba)
+      - name: Unit tests (static + jieba)
         run: zig build test -Doptimize=ReleaseSafe -Dbuild-jieba=true
 
-      - name: Cross-compile x86_64-linux
+      - name: Unit tests (shared)
+        run: zig build test -Doptimize=ReleaseSafe -Dshared=true
+
+      - name: Unit tests (shared + jieba)
+        run: zig build test -Doptimize=ReleaseSafe -Dshared=true -Dbuild-jieba=true
+
+      - name: Cross-compile static x86_64-linux
         if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'ubuntu')
         run: zig build -Dtarget=x86_64-linux -Doptimize=ReleaseSafe
 
-      - name: Cross-compile aarch64-linux
+      - name: Cross-compile static aarch64-linux
         if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'ubuntu')
         run: zig build -Dtarget=aarch64-linux -Doptimize=ReleaseFast
 
-      - name: Cross-compile x86_64-macos
+      - name: Cross-compile static x86_64-macos
         if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'macos')
         run: zig build -Dtarget=x86_64-macos -Doptimize=ReleaseSafe
 
-      - name: Cross-compile aarch64-macos
+      - name: Cross-compile static aarch64-macos
         if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'macos')
         run: zig build -Dtarget=aarch64-macos -Doptimize=ReleaseFast
 
-      - name: Cross-compile x86_64-windows
+      - name: Cross-compile static x86_64-windows
         if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'windows')
         run: zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSafe
 
-      - name: Cross-compile aarch64-windows
+      - name: Cross-compile static aarch64-windows
         if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'windows')
         run: zig build -Dtarget=aarch64-windows -Doptimize=ReleaseFast
+
+      - name: Cross-compile shared x86_64-linux
+        if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'ubuntu')
+        run: zig build -Dtarget=x86_64-linux -Doptimize=ReleaseSafe -Dshared=true
+
+      - name: Cross-compile shared aarch64-linux
+        if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'ubuntu')
+        run: zig build -Dtarget=aarch64-linux -Doptimize=ReleaseFast -Dshared=true
+
+      - name: Cross-compile shared x86_64-macos
+        if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'macos')
+        run: zig build -Dtarget=x86_64-macos -Doptimize=ReleaseSafe -Dshared=true
+
+      - name: Cross-compile shared aarch64-macos
+        if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'macos')
+        run: zig build -Dtarget=aarch64-macos -Doptimize=ReleaseFast -Dshared=true
+
+      - name: Cross-compile shared x86_64-windows
+        if: matrix.arch != 'x86_64' || !startsWith(matrix.os, 'windows')
+        run: zig build -Dtarget=x86_64-windows -Doptimize=ReleaseSafe -Dshared=true
+
+      - name: Cross-compile shared aarch64-windows
+        if: matrix.arch != 'aarch64' || !startsWith(matrix.os, 'windows')
+        run: zig build -Dtarget=aarch64-windows -Doptimize=ReleaseFast -Dshared=true

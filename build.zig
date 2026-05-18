@@ -9,6 +9,7 @@
 //!                                  Options: Debug, ReleaseSafe, ReleaseFast, ReleaseSmall
 //!   -Dbuild-exe=<bool>             Build CLI executables (default: true)
 //!   -Dbuild-dict=<bool>            Generate dictionaries (default: true)
+//!   -Dshared=<bool>                Build OpenCC as a shared library instead of static (default: false)
 //!   -Ddisable-plugins=<bool>       Disable segmentation plugin loading at compile time (default: false)
 //!   -Dbuild-jieba=<bool>           Build Jieba plugin as a shared library (default: false)
 //!   -Dpkg-data-dir=<path>          Data directory (default: {prefix}/share/opencc)
@@ -32,6 +33,7 @@ const BuildOptions = struct {
     build_exe: bool,
     build_dict: bool,
     build_jieba: bool,
+    shared: bool,
     disable_plugins: bool,
     pkg_config_header: *Build.Step.ConfigHeader,
     pkg_name: []const u8,
@@ -119,6 +121,7 @@ fn buildOptions(b: *Build) BuildOptions {
 
     const build_exe = b.option(bool, "build-exe", "Build opencc, opencc_dict, opencc_phrase_extract. default: true") orelse true;
     const build_dict = b.option(bool, "build-dict", "Generate and build opencc builtin dictionaries. default: true") orelse true;
+    const shared = b.option(bool, "shared", "Build OpenCC as a shared library instead of static. default: false") orelse false;
     const disable_plugins = b.option(bool, "disable-plugins", "Disable segmentation plugin loading at compile time (no dlopen). default: false") orelse false;
     const build_jieba = b.option(bool, "build-jieba", "Build Jieba segmentation plugin as a shared library. default: false") orelse false;
     const pkg_data_dir = b.option([]const u8, "pkg-data-dir", b.fmt("Opencc package data directory. default: \"{s}\"", .{default_pkg_data_dir})) orelse default_pkg_data_dir;
@@ -129,6 +132,7 @@ fn buildOptions(b: *Build) BuildOptions {
         .build_exe = build_exe,
         .build_dict = build_dict,
         .build_jieba = build_jieba,
+        .shared = shared,
         .disable_plugins = disable_plugins,
         .pkg_config_header = configHeader(b),
         .pkg_name = "\"opencc\"",
@@ -161,7 +165,8 @@ fn configHeader(b: *Build) *std.Build.Step.ConfigHeader {
 }
 
 fn libraryStep(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile) *Build.Step {
-    const lib_step = b.step("lib", "Build only the static library and headers");
+    const desc = if (opts.shared) "Build only the shared library and headers" else "Build only the static library and headers";
+    const lib_step = b.step("lib", desc);
     installHeaderFiles(b, lib_step, opts.pkg_config_header);
     lib_step.dependOn(&b.addInstallArtifact(lib_opencc, .{}).step);
     return lib_step;
@@ -207,6 +212,7 @@ fn library(b: *Build, opts: BuildOptions) *std.Build.Step.Compile {
         .flags = &[_][]const u8{
             "-std=c++17",
             "-Wall",
+            "-fPIC",
             "-fno-delete-null-pointer-checks",
         },
     });
@@ -220,8 +226,9 @@ fn library(b: *Build, opts: BuildOptions) *std.Build.Step.Compile {
     mod.addCMacro("PACKAGE_NAME", opts.pkg_name);
     mod.addCMacro("VERSION", opts.pkg_version);
     mod.addCMacro("PKGDATADIR", opts.pkg_data_dir);
-    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
+    if (!opts.shared) mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
     if (opts.disable_plugins) mod.addCMacro("OPENCC_DISABLE_PLUGINS", "1");
+    if (opts.shared and opts.target.result.os.tag == .windows) mod.addCMacro("libopencc_EXPORTS", "1");
 
     mod.linkLibrary(lib_marisa);
 
@@ -232,7 +239,7 @@ fn library(b: *Build, opts: BuildOptions) *std.Build.Step.Compile {
     return b.addLibrary(.{
         .name = "opencc",
         .root_module = mod,
-        .linkage = .static,
+        .linkage = if (opts.shared) .dynamic else .static,
     });
 }
 
@@ -294,7 +301,8 @@ fn libraryJieba(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile) 
         .files = &sources,
         .flags = &[_][]const u8{ "-std=c++17", "-fno-sanitize=all" },
     });
-    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
+    mod.addCMacro("OPENCC_PLUGIN_BUILD", "1");
+    if (!opts.shared) mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
     mod.addIncludePath(dep.path("src"));
     mod.addIncludePath(dep.path("plugins/jieba/include"));
     mod.addIncludePath(dep.path("plugins/jieba/deps/cppjieba/include"));
@@ -320,6 +328,9 @@ fn buildJiebaStep(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile
     }).step);
 
     const jieba_config_files = [_][]const u8{
+        "s2hk_jieba.json",
+        "s2t_jieba.json",
+        "s2tw_jieba.json",
         "s2twp_jieba.json",
         "tw2sp_jieba.json",
     };
@@ -359,6 +370,7 @@ fn installHeaderFiles(
         "Config.hpp",
         "Conversion.hpp",
         "ConversionChain.hpp",
+        "ConversionInspection.hpp",
         "Converter.hpp",
         "Dict.hpp",
         "DictConverter.hpp",
@@ -447,7 +459,7 @@ fn executable(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile) *B
     mod.addCMacro("PACKAGE_NAME", opts.pkg_name);
     mod.addCMacro("VERSION", opts.pkg_version);
     mod.addCMacro("PKGDATADIR", opts.pkg_data_dir);
-    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
+    if (!opts.shared) mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
 
     mod.linkLibrary(lib_opencc);
 
@@ -482,7 +494,7 @@ fn executableDict(b: *Build, opts: BuildOptions, lib_opencc: *Build.Step.Compile
     mod.addConfigHeader(opts.pkg_config_header);
 
     mod.addCMacro("VERSION", opts.pkg_version);
-    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
+    if (!opts.shared) mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
 
     mod.linkLibrary(lib_opencc);
 
@@ -517,7 +529,7 @@ fn executablePhraseExtract(b: *Build, opts: BuildOptions, lib_opencc: *Build.Ste
     mod.addConfigHeader(opts.pkg_config_header);
 
     mod.addCMacro("VERSION", opts.pkg_version);
-    mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
+    if (!opts.shared) mod.addCMacro("Opencc_BUILT_AS_STATIC", "1");
 
     mod.linkLibrary(lib_opencc);
 
